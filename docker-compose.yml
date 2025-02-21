@@ -1,0 +1,43 @@
+version: '3.7'
+
+services:
+  frontend:
+    build: .
+    container_name: frontend
+    restart: always
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - "80:80"
+    networks:
+      - frontend-network
+    environment:
+      - DOMINIO=${DOMINIO}  
+
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    environment:
+      - DEFAULT_HOST=${DOMINIO}  
+    ports:
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - frontend-network
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    networks:
+      - frontend-network
+    environment:
+      - DOMINIO=${DOMINIO}  
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  frontend-network:
+    driver: bridge
